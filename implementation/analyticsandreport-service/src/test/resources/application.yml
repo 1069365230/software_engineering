@@ -1,0 +1,25 @@
+#server:
+#  port: 8090
+#
+#spring:
+#  datasource:
+#    url: jdbc:postgresql://analyticsandreport-db:5442/analyticsandreport
+#    username: postgres
+#    password: postgres
+#    driver-class-name: org.postgresql.Driver
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: create
+#    properties:
+#      hibernate:
+#        format_sql: true
+#        show_sql: true
+
+# It is necessary to fall back to the H2 database for unit tests inside the GitLab pipeline.
+spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+

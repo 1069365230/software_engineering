@@ -1,0 +1,23 @@
+server:
+  port: 8089
+spring:
+  application:
+    name: export-service
+  datasource:
+    username: 'jinyu98'
+    url: jdbc:postgresql://${PSQL_IP:localhost}:5432/export-service-db
+    #url: jdbc:postgresql://localhost:5441/export-service-db
+    password: 'password'
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show_sql: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+

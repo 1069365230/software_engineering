@@ -1,0 +1,75 @@
+stages:
+  - build
+  - test
+  - end-to-end-test
+
+services:
+  - postgres:15.2
+variables:
+  POSTGRES_PASSWORD: password
+  POSTGRES_USER: yuj98
+  POSTGRES_DB: marktag-service-db
+
+maven-build:
+  stage: build
+  tags:
+    - ase-0601
+  image: maven:3.8.1-openjdk-17
+  script:
+    - cd implementation
+    - mvn clean package -Dmaven.test.skip --projects !edu.ems:frontend
+  artifacts:
+    paths:
+      - implementation/*/target/*.jar
+    expire_in: 5 mins
+
+unit-tests:
+  stage: test
+  image: maven:3.8.1-openjdk-17
+  script:
+    - echo "unit tests starts..."
+    - cd implementation/marktag-service
+    - mvn test -Dtest="MarktagServiceModelTest, MarkTagServiceTest"
+
+integration-tests:
+  stage: test
+  image: maven:3.8.1-openjdk-17
+  script:
+    - echo "integration tests starts..."
+    - cd implementation/marktag-service
+    - mvn test -DPSQL_IP=postgres -Dtest="AttendeeRepoTest, EventRepoTest, ParentChildrenRelationshipTest"
+
+topic-processing-tests:
+  stage: test
+  image: maven:3.8.1-openjdk-17
+  script:
+    - echo "topic processing tests starts..."
+    - cd implementation/marktag-service
+    - mvn test -Dtest="MarkTagServiceTopicProcessingTest"
+
+end-to-end-tests:
+  stage: end-to-end-test
+  tags:
+    - ase-0601
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "aseteam0601" -p "79J@!JT6}kWb~di"
+  script:
+    - cd ./implementation/end-to-end
+    - docker build -t end-to-end-tests -f Dockerfile .
+    - cd ../
+    - docker-compose up --build -d api-gateway login-service feedback-service analyticsandreport-service event-inventory-service marktag-service export-service attendance-service recommender-service notification-service
+    - cd ./end-to-end
+    - sleep 100s
+    - docker run --network implementation_default end-to-end-tests
+    - cd ../
+    - docker-compose down
+    - docker system prune --all --force --volumes
+
+default:
+  artifacts:
+    expire_in: 1 days
+
+

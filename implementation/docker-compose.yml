@@ -1,0 +1,376 @@
+version: '3.9'
+services:
+  api-gateway:
+    build: ./api-gateway
+    image: api-gateway
+    container_name: api-gateway
+    ports:
+      - "8081:8081"
+    depends_on:
+      login-service:
+        condition: service_healthy
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.2.5
+    restart: unless-stopped
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  broker:
+    image: confluentinc/cp-kafka:7.2.5
+    container_name: broker
+    depends_on:
+      - zookeeper
+    restart: unless-stopped
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://:29092,PLAINTEXT_INTERNAL://broker:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  keycloak-db:
+    image: postgres:15.2
+    container_name: keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: k_user
+      POSTGRES_PASSWORD: k_password
+    volumes:
+      - keycloak-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "keycloak", "-U", "k_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  keycloak:
+    image: jboss/keycloak:15.0.2
+    container_name: keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_USER: admin1
+      KEYCLOAK_PASSWORD: admin1
+      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_IMPORT: /opt/jboss/keycloak/standalone/configuration/keycloak-config.json
+      DB_VENDOR: POSTGRES
+      DB_ADDR: keycloak-db
+      DB_DATABASE: keycloak
+      DB_USER: k_user
+      DB_PASSWORD: k_password
+    volumes:
+      - ./keycloak-config.json:/opt/jboss/keycloak/standalone/configuration/keycloak-config.json
+    healthcheck:
+      test: [ "CMD", "curl", "http://keycloak:8080/auth" ]
+      interval: 10s
+      timeout: 5s
+      retries: 50
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+
+  login-service-db:
+    image: postgres:15.2
+    container_name: login-service-db
+    environment:
+      POSTGRES_DB: login-service-db
+      POSTGRES_USER: l_user
+      POSTGRES_PASSWORD: l_password
+    volumes:
+      - login-service-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "login-service-db", "-U", "l_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  login-service:
+    build: ./login-service
+    image: login-service
+    container_name: login-service
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      login-service-db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: [ "CMD", "curl", "http://login-service:8083/login?username=test&password=test" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  marktag-service-db:
+    container_name: marktag-service-db
+    image: postgres:15.2
+    environment:
+      POSTGRES_USER: yuj98
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: marktag-service-db
+    volumes:
+      - marktag-service-db:/data/postgres
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "marktag-service-db", "-U", "yuj98" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  marktag-service:
+    build: ./marktag-service
+    container_name: marktag-service
+    environment:
+      SERVER_PORT: 8086
+      SPRING_DATASOURCE_URL: jdbc:postgresql://marktag-service-db:5432/marktag-service-db
+      SPRING_DATASOURCE_USERNAME: yuj98
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_KAFKA_BOOTSTRAPSERVERS: broker:29092
+    depends_on:
+      marktag-service-db:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+
+  export-service-db:
+    container_name: export-service-db
+    image: postgres:15.2
+    environment:
+      POSTGRES_USER: jinyu98
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: export-service-db
+    volumes:
+      - export-service-db:/data/postgres_export
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "export-service-db", "-U", "jinyu98" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  export-service:
+    build: ./export-service
+    container_name: export-service
+    environment:
+      SERVER_PORT: 8089
+      SPRING_DATASOURCE_URL: jdbc:postgresql://export-service-db:5432/export-service-db
+      SPRING_DATASOURCE_USERNAME: jinyu98
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_KAFKA_BOOTSTRAPSERVERS: broker:29092
+    depends_on:
+      export-service-db:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+
+  attendance-service:
+    build: ./attendance-service
+    restart: always
+    environment:
+      - SERVER_PORT=8091
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://attendance-db:5432/attendance_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_KAFKA_BOOTSTRAPSERVERS=broker:9092
+    depends_on:
+      attendance-db:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+
+  attendance-db:
+    image: postgres:15.2
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=attendance_db
+    volumes:
+      - attendance_db:/var/lib/postgresql/data/
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "attendance_db", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  recommender-service:
+    build: ./recommender-service
+    restart: always
+    environment:
+      - SERVER_PORT=8087
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://recommender-db:5432/recommendation_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_KAFKA_BOOTSTRAPSERVERS=broker:9092
+    depends_on:
+      recommender-db:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+
+  recommender-db:
+    image: postgres:15.2
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=recommendation_db
+    volumes:
+      - recommendation_db:/var/lib/postgresql/data/
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "recommendation_db", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  feedback-service:
+    build: ./feedback-service
+    image: feedback-service
+    container_name: feedback-service
+    depends_on:
+      feedbackservice-db:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+    volumes:
+      - ./feedback-service/src/main/resources/application.yml:/app/src/main/resources/application.yml
+    healthcheck:
+      test: [ "CMD", "curl", "http://feedback-service:8088/feedbacks/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  feedbackservice-db:
+    image: postgres:15.2
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=feedback
+    volumes:
+      - feedbackservice-db:/var/lib/postgresql/data/
+    command: -p 5440
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-p", "5440", "-d", "feedback", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  analyticsandreport-service:
+    build: ./analyticsandreport-service
+    image: analyticsandreport-service
+    container_name: analyticsandreport-service
+    depends_on:
+      analyticsandreport-db:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+    volumes:
+      - ./analyticsandreport-service/src/main/resources/application.yml:/app/src/main/resources/application.yml
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "http://analyticsandreport-service:8090/analytics/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  analyticsandreport-db:
+    image: postgres:15.2
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=analyticsandreport
+    volumes:
+      - analyticsandreport-db:/var/lib/postgresql/data/
+    command: -p 5442
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-p", "5442", "-d", "analyticsandreport", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  event-inventory-service:
+    build: ./event-inventory-service
+    image: event-inventory-service
+    container_name: event-inventory-service
+    restart: always
+    environment:
+      - SERVER_PORT=8084
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://event-inventory-db:5432/event_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_KAFKA_BOOTSTRAPSERVERS=broker:9092
+    depends_on:
+      event-inventory-db:
+        condition: service_healthy
+      api-gateway:
+        condition: service_started
+
+  event-inventory-db:
+    image: postgres:15.2
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=event_db
+    volumes:
+      - event-db:/var/lib/postgresql/data/
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "event_db", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  notification-service:
+    build: ./notification-service
+    image: notification-service
+    container_name: notification-service
+    depends_on:
+      api-gateway:
+        condition: service_started
+      notification-service-db:
+        condition: service_healthy
+
+  notification-service-db:
+    image: postgres:15.2
+    container_name: notification-service-db
+    environment:
+      POSTGRES_DB: notification-service-db
+      POSTGRES_USER: n_user
+      POSTGRES_PASSWORD: n_password
+    volumes:
+      - notification-service-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d", "notification-service-db", "-U", "n_user" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      login-service:
+        condition: service_healthy
+    ports:
+      - "4200:80"
+
+volumes:
+  login-service-db:
+  keycloak-db:
+  marktag-service-db:
+  export-service-db:
+  attendance_db:
+  recommendation_db:
+  feedbackservice-db:
+  analyticsandreport-db:
+  notification-service-db:
+  event-db:

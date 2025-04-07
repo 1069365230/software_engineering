@@ -1,0 +1,29 @@
+server:
+  port: 8092
+
+spring:
+  datasource:
+    url: jdbc:postgresql://notification-service-db:5432/notification-service-db
+    username: n_user
+    password: n_password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  cloud:
+    function:
+      definition: consumeAttendanceEntry; consumeEventChanged; consumeBookmarkEntry; consumeEmsUserCreated;
+    stream:
+      bindings:
+        consumeAttendanceEntry-in-0:
+          destination: attendee.event-booking
+        consumeEventChanged-in-0:
+          destination: event.inventory.update
+        consumeBookmarkEntry-in-0:
+          destination: attendee.bookmark
+        consumeEmsUserCreated-in-0:
+          destination: user.management
+  kafka:
+    bootstrap-servers: broker:9092

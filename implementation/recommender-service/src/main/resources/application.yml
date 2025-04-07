@@ -1,0 +1,36 @@
+server:
+  port: 8087
+spring:
+  datasource:
+    url: jdbc:postgresql://${PSQL_IP:localhost}:5432/recommendation_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+    # show-sql: true
+  cloud:
+    function:
+      definition: consumeUserRegistration; consumeNewEventEntry; consumeEventBooking; consumeBookmarkEntry; consumeEventUpdate
+    stream:
+      bindings:
+        consumeEventBooking-in-0:
+          destination: attendee.event-booking
+        consumeNewEventEntry-in-0:
+          destination: event.inventory
+        consumeUserRegistration-in-0:
+          destination: user.management
+        consumeBookmarkEntry-in-0:
+          destination: attendee.bookmark
+        consumeEventUpdate-in-0:
+          destination: event.inventory.update
+      kafka:
+        binder:
+          configuration:
+            auto:
+              offset:
+                reset: earliest
+
+  kafka:
+    bootstrap-servers: broker:9092

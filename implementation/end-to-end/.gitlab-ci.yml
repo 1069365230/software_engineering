@@ -1,0 +1,35 @@
+stages:
+  - build
+  - end-to-end-test
+
+maven-build:
+  stage: build
+  tags:
+    - ase-0601
+  image: maven:3.9.1
+  script:
+    - cd implementation
+    - mvn clean package -Dmaven.test.skip --projects !edu.ems:frontend
+  artifacts:
+    paths:
+      - implementation/*/target/*.jar
+    expire_in: 10 mins
+
+end-to-end-test:
+  stage: end-to-end-test
+  tags:
+    - ase-0601
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - cd ./implementation/end-to-end
+    - docker build -t end-to-end-tests -f Dockerfile .
+    - cd ../
+    - docker-compose up --build -d api-gateway login-service feedback-service analyticsandreport-service event-inventory-service marktag-service export-service attendance-service recommender-service notification-service
+    - cd ./end-to-end
+    - sleep 100s
+    - docker run --network implementation_default end-to-end-tests
+    - cd ../
+    - docker-compose down
+    - docker system prune --all --force --volumes

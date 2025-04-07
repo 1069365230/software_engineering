@@ -1,0 +1,20 @@
+server:
+  port: 8084
+spring:
+  datasource:
+    url: jdbc:postgresql://event-inventory-db:5432/event_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+  cloud:
+    stream:
+      bindings:
+        output:
+          destination: "event.inventory"
+  kafka:
+    bootstrap-servers: broker:9092
+
+

@@ -1,0 +1,73 @@
+login-service:
+  trigger:
+    include: implementation/login-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/login-service/**/*]
+
+attendance-service:
+  trigger:
+    include: implementation/attendance-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/attendance-service/**/*]
+
+recommender-service:
+  trigger:
+    include: implementation/recommender-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/recommender-service/**/*]
+
+marktag-service:
+  trigger:
+    include: implementation/marktag-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/marktag-service/**/*]
+
+export-service:
+  trigger:
+    include: implementation/export-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/export-service/**/*]
+  
+analyticsandreport-service:
+  trigger:
+    include: implementation/analyticsandreport-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/analyticsandreport-service/**/*]
+
+feedback-service:
+  trigger:
+    include: implementation/feedback-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/feedback-service/**/*]
+
+notification-service:
+  trigger:
+    include: implementation/notification-service/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/notification-service/**/*]
+
+end-to-end:
+  trigger:
+    include: implementation/end-to-end/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/end-to-end/**/*]
+
+api-gateway:
+  trigger:
+    include: implementation/api-gateway/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes: [implementation/api-gateway/**/*]
+    
+default:
+  artifacts:
+    expire_in: 1 day

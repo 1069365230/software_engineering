@@ -1,0 +1,77 @@
+server:
+  port: 8081
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: login-service-route
+          uri: http://login-service:8083
+          predicates:
+            - Path=/login-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: analyticsandreport-service-route
+          uri: http://analyticsandreport-service:8090
+          predicates:
+            - Path=/analyticsandreport-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: attendance-service-route
+          uri: http://attendance-service:8091
+          predicates:
+            - Path=/attendance-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: event-inventory-service-route
+          uri: http://event-inventory-service:8084
+          predicates:
+            - Path=/event-inventory-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: export-service-route
+          uri: http://export-service:8089
+          predicates:
+            - Path=/export-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: feedback-service-route
+          uri: http://feedback-service:8088
+          predicates:
+            - Path=/feedback-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: marktag-service-route
+          uri: http://marktag-service:8086
+          predicates:
+            - Path=/marktag-service/**
+          filters:
+            - StripPrefix=1
+
+        - id: recommender-service-route
+          uri: http://recommender-service:8087
+          predicates:
+            - Path=/recommender-service/**
+          filters:
+            - StripPrefix=1
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600

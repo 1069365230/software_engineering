@@ -1,0 +1,52 @@
+server:
+  port: 8090
+
+spring:
+  datasource:
+    url: jdbc:postgresql://analyticsandreport-db:5442/analyticsandreport
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+  cloud:
+    function:
+      definition: attendanceBinding;eventBinding;feedbackBinding;bookmarkBinding
+    stream:
+      kafka:
+        binder:
+          brokers: broker:9092
+          replicationFactor: 1
+      bindings:
+        attendanceBinding-in-0:
+          destination: attendee.event-booking # KEEP
+          group: analytics-attendance-entries
+        #attendeeBinding-in-0:
+        #  destination: attendee.registration # KEEP
+        #  group: testId2
+        eventBinding-in-0:
+          destination: event.inventory # KEEP
+          group: analytics-event-registration
+        feedbackBinding-in-0:
+          destination: attendee.feedback # KEEP
+          group: analytics-feedback-entry
+        #feedbackRemovalBinding-in-0:
+        #  destination: feedback.removal
+        #  group: analytics-feedback-removal
+        #bookmarkDeletionBinding-in-0:
+        #  destination: marktagservice-bookmark-remove
+        #  group: analytics-bookmark-deletion
+        bookmarkBinding-in-0:
+          destination: attendee.bookmark
+          group: analytics-bookmark-add
+
+  kafka:
+    bootstrap-servers: broker:9092
+
+

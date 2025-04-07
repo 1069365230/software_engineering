@@ -1,0 +1,32 @@
+server:
+  port: 8091
+spring:
+  datasource:
+    url: jdbc:postgresql://attendance-db:5432/attendance_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    # show-sql: true
+  cloud:
+    function:
+      definition: consumeUserRegistration; consumeNewEventEntry; consumeEventUpdate
+    stream:
+      bindings:
+        consumeNewEventEntry-in-0:
+          destination: event.inventory
+        consumeUserRegistration-in-0:
+          destination: user.management
+        consumeEventUpdate-in-0:
+          destination: event.inventory.update
+      kafka:
+        binder:
+          configuration:
+            auto:
+              offset:
+                reset: earliest
+  kafka:
+    bootstrap-servers: broker:9092
+

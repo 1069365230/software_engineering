@@ -1,0 +1,51 @@
+server:
+  port: 8088
+
+spring:
+  datasource:
+    url: jdbc:postgresql://feedbackservice-db:5440/feedback
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+  cloud:
+    function:
+        definition: attendanceBinding;attendeeBinding;eventBinding
+    stream:
+      kafka:
+        binder:
+          brokers: broker:9092
+          replicationFactor: 1
+      bindings:
+        attendanceBinding-in-0:
+          destination: attendee.event-booking # KEEP
+          group: feedback-attendance-entry
+        attendanceBinding-out-0:
+          destination: attendee.event-booking # TEST
+          #group:
+        attendeeBinding-in-0:
+          destination: user.management # KEEP
+          group: feedback-attendee-registration
+        attendeeBinding-out-0:
+          destination: user.management # TEST
+          #group: testId2
+        eventBinding-in-0:
+          destination: event.inventory # KEEP
+          group: feedback-event-inventory
+        eventBinding-out-0:
+          destination: event.inventory # TEST
+          #group: testId3
+        feedbackBinding-out-0:
+          destination: attendee.feedback  # KEEP
+          #group: testId4
+  kafka:
+    bootstrap-servers: broker:9092
+
+

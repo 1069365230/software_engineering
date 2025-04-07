@@ -1,0 +1,8 @@
+FROM maven:3.9.1
+WORKDIR /app
+COPY . .
+
+ARG SKIP_TESTS_BUILD
+RUN if [ "$SKIP_TESTS_BUILD" = "true" ] ; then mvn clean package -Dmaven.test.skip ; else mvn test -Dtest=LoginServiceApplicationTest ; fi
+
+CMD if [ "$SKIP_TESTS_RUN" = "true" ] ; then echo "Skipping tests during run"; else mvn test -Dtest=LoginServiceApplicationTest ; fi

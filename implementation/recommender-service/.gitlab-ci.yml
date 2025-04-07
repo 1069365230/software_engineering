@@ -1,0 +1,67 @@
+stages:
+  - build
+  - unit-test
+  - integration-test
+  - e2e-test
+
+maven-build:
+  stage: build
+  tags:
+    - ase-0601
+  image: maven:3.9.1
+  script:
+    - echo "Creating JARs..."
+    - cd implementation
+    - mvn clean package -Dmaven.test.skip --projects !edu.ems:frontend
+  artifacts:
+    paths:
+      - implementation/*/target/*.jar
+
+unit-tests:
+  stage: unit-test
+  tags:
+    - ase-0601
+  image: maven:3.9.1
+  script:
+    - echo "Running Unit-Tests..."
+    - cd implementation/recommender-service
+    - mvn test -Dtest=\!integration.*Test
+  cache:
+    paths:
+      - ./implementation/recommender-service/.mvn/wrapper
+
+integration-tests:
+  stage: integration-test
+  tags:
+    - ase-0601
+  image: maven:3.9.1
+  script:
+    - echo "Running Integration-Tests..."
+    - cd implementation/recommender-service
+    - mvn test -Dtest=integration.*Test
+  cache:
+    paths:
+      - ./implementation/recommender-service/.mvn/wrapper
+
+e2e-tests:
+  stage: e2e-test
+  tags:
+    - ase-0601
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - cd ./implementation/end-to-end
+    - docker build -t end-to-end-tests -f Dockerfile .
+    - cd ../
+    - docker-compose up --build -d api-gateway login-service feedback-service analyticsandreport-service event-inventory-service marktag-service export-service attendance-service recommender-service notification-service
+    - cd ./end-to-end
+    - sleep 100s # make sure that all services are up
+    - docker run --network implementation_default end-to-end-tests
+    - cd ../
+    - docker-compose down
+    - docker system prune --all --force --volumes
+    
+default:
+  artifacts:
+    expire_in: 1 day
